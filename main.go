@@ -4,48 +4,55 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/jeadie/prospect/prospect"
 	"io"
 	"net/http"
 	"os"
-	"github.com/jeadie/prospect/prospect"
 	"sync"
 	"time"
 )
 
 func main() {
-	response, err := http.Get("https://www.reuters.com/markets/commodities")
-	if err != nil {
-		return
-	}
+	reutersUrl := "https://www.reuters.com/markets/commodities"
+	miningUrl := "https://www.mining.com/#latest-section"
+
+	reutersBody, _ := getBodyFromUrl(reutersUrl)
+	miningBody, _ := getBodyFromUrl(miningUrl)
 
 	// response body is streamed on demand. Must close connection at end.
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			fmt.Println("an error occurred when closing http GET")
-		}
-	}(response.Body)
+	defer closeHttpBody(reutersBody)
+	defer closeHttpBody(miningBody)
 
 	// Channels & Wait groups
 	wg := new(sync.WaitGroup)
 	wg.Add(1)
 	results := make(chan *prospect.ResourceReference)
-	selections := make(chan *goquery.Selection)
+
+	reuterSelections := make(chan *goquery.Selection)
+	miningSelections := make(chan *goquery.Selection)
 
 	reuters := prospect.ReutersProvider{}
-	doc, _ := goquery.NewDocumentFromReader(response.Body)
+	mining := prospect.MiningComProvider{}
+
+	reuterDoc, _ := goquery.NewDocumentFromReader(reutersBody)
+	go reuters.GetResources(reuterDoc, reuterSelections)
+
+	miningDoc, _ := goquery.NewDocumentFromReader(miningBody)
+	go mining.GetResources(miningDoc, miningSelections)
+
 	fmt.Println("Before resources")
-	go reuters.GetResources(doc, selections)
 	fmt.Println("After resources")
 
+	// Transform all into ResourceReferences
 	go func() {
-		for s := range selections {
+		for s := range reuterSelections {
 			results <- reuters.ToResource(s)
+		}
+		for s := range miningSelections {
+			results <- mining.ToResource(s)
 		}
 		close(results)
 	}()
-
-	fmt.Println("After results")
 
 	// Create daily file
 	y, m, d := time.Now().Date()
@@ -65,6 +72,21 @@ func main() {
 		wg.Done()
 	}(wg)
 	wg.Wait()
+}
+
+func closeHttpBody(Body io.ReadCloser) {
+	err := Body.Close()
+	if err != nil {
+		fmt.Println("an error occurred when closing http GET")
+	}
+}
+
+func getBodyFromUrl(url string) (io.ReadCloser, error) {
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	return response.Body, nil
 }
 
 func writeToCsv(f *os.File, c chan *prospect.ResourceReference) {
