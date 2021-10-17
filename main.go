@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/csv"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"github.com/Jeadie/prospect/prospect"
+	"github.com/PuerkitoBio/goquery"
 	"io"
 	"net/http"
 	"os"
@@ -39,9 +39,6 @@ func main() {
 
 	miningDoc, _ := goquery.NewDocumentFromReader(miningBody)
 	go mining.GetResources(miningDoc, miningSelections)
-
-	fmt.Println("Before resources")
-	fmt.Println("After resources")
 
 	// Transform all into ResourceReferences
 	go func() {
@@ -90,11 +87,9 @@ func getBodyFromUrl(url string) (io.ReadCloser, error) {
 }
 
 func writeToCsv(f *os.File, c chan *prospect.ResourceReference) {
-	fmt.Println("Writing CSVs")
 	writer := csv.NewWriter(f)
 	for r := range c {
 		writer.Write([]string{r.Href.String(), r.Title, r.Preview})
 	}
-	fmt.Println("Done writing CSVs")
 	writer.Flush()
 }
