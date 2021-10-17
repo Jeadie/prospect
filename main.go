@@ -4,7 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/jeadie/prospect/prospect"
+	"github.com/Jeadie/prospect/prospect"
 	"io"
 	"net/http"
 	"os"

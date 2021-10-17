@@ -1,4 +1,4 @@
-module github.com/jeadie/prospect
+module github.com/Jeadie/prospect
 
 go 1.17
 
