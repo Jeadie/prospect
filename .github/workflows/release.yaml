@@ -1,18 +1,20 @@
-on: release
-name: Build Release
+on:
+  release:
+    types: [created]
 
 jobs:
-  binaries:
+  releases-matrix:
+    name: Release Go Binary
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 2
       matrix:
-        GOOS: ['darwin', 'linux', 'windows']
+        goos: [linux, windows, darwin]
+        goarch: [arm64, amd64]
+
     steps:
-      - uses: actions/checkout@master
-      - name: compile and release
-        uses: ngs/go-release.action@v1.0.1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GOARCH: arm64
-          GOOS: ${{ matrix.GOOS }}
+      - uses: actions/checkout@v2
+      - uses: wangyoucao577/go-release-action@v1.20
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
