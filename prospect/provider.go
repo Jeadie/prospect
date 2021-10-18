@@ -17,6 +17,7 @@ type ResourceReference struct {
 type Provider interface {
 	GetResources(d *goquery.Document, output chan *goquery.Selection)
 	ToResource(s *goquery.Selection) *ResourceReference
+	GetBaseUrl() *url.URL
 	//Parse(document goquery.Document) (Resource, error)
 }
 
@@ -48,6 +49,13 @@ func (p ReutersProvider) ToResource(s *goquery.Selection) *ResourceReference {
 	}
 }
 
+func (p ReutersProvider) GetBaseUrl() *url.URL {
+	v, err := url.Parse("https://www.reuters.com/markets/commodities")
+	if err != nil {
+		return &url.URL{}
+	}
+	return v
+}
 
 
 type MiningComProvider struct {
@@ -75,6 +83,14 @@ func (m MiningComProvider) ToResource(s *goquery.Selection) *ResourceReference {
 			Preview: cleanString(text.Text()),
 		}
 	}
+}
+
+func (m MiningComProvider) GetBaseUrl() *url.URL {
+	v, err := url.Parse("https://www.mining.com/#latest-section")
+	if err != nil {
+		return &url.URL{}
+	}
+	return v
 }
 
 func cleanString(s string) string {

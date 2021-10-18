@@ -13,47 +13,47 @@ import (
 )
 
 func main() {
-	reutersUrl := "https://www.reuters.com/markets/commodities"
-	miningUrl := "https://www.mining.com/#latest-section"
 
-	reutersBody, _ := getBodyFromUrl(reutersUrl)
-	miningBody, _ := getBodyFromUrl(miningUrl)
-
-	// response body is streamed on demand. Must close connection at end.
-	defer closeHttpBody(reutersBody)
-	defer closeHttpBody(miningBody)
+	providers := []prospect.Provider{
+		prospect.ReutersProvider{},
+		prospect.MiningComProvider{},
+	}
 
 	// Channels & Wait groups
-	wg := new(sync.WaitGroup)
-	wg.Add(1)
+	providerWg := new(sync.WaitGroup)
+	providerWg.Add(len(providers)) // Each provider + CSV waitGroup
 	results := make(chan *prospect.ResourceReference)
 
-	reuterSelections := make(chan *goquery.Selection)
-	miningSelections := make(chan *goquery.Selection)
+	// Setup each provider
+	for _, p := range providers {
+		body, _ := getBodyFromUrl(p.GetBaseUrl().String())
 
-	reuters := prospect.ReutersProvider{}
-	mining := prospect.MiningComProvider{}
+		// response body is streamed on demand. Must close connection at end.
+		defer closeHttpBody(body)
 
-	reuterDoc, _ := goquery.NewDocumentFromReader(reutersBody)
-	go reuters.GetResources(reuterDoc, reuterSelections)
+		doc, _ := goquery.NewDocumentFromReader(body)
+		selectionChan := make(chan *goquery.Selection)
 
-	miningDoc, _ := goquery.NewDocumentFromReader(miningBody)
-	go mining.GetResources(miningDoc, miningSelections)
+		go p.GetResources(doc, selectionChan)
 
-	// Transform all into ResourceReferences
-	go func() {
-		for s := range reuterSelections {
-			results <- reuters.ToResource(s)
-		}
-		for s := range miningSelections {
-			results <- mining.ToResource(s)
-		}
-		close(results)
-	}()
+		p := p
+		go func(wg *sync.WaitGroup) {
+			for s := range selectionChan {
+				results <- p.ToResource(s)
+			}
+			wg.Done()
+		}(providerWg)
+	}
+
+	// When all providers are done, results are done.
+	go func(c chan *prospect.ResourceReference, wg *sync.WaitGroup) {
+		wg.Wait()
+		close(c)
+	}(results, providerWg)
 
 	// Create daily file
 	y, m, d := time.Now().Date()
-	f, _ := os.Create(fmt.Sprintf("%d-%s-%d-reuters.csv", y, m.String(), d))
+	f, _ := os.Create(fmt.Sprintf("%d-%s-%d.csv", y, m.String(), d))
 
 	// close csv file on main() end
 	defer func(f *os.File) {
@@ -63,16 +63,19 @@ func main() {
 		}
 	}(f)
 
+	csv_wg := new(sync.WaitGroup)
+	csv_wg.Add(1)
+
 	go func(wg *sync.WaitGroup) {
 		// Process all results
 		writeToCsv(f, results)
 		wg.Done()
-	}(wg)
-	wg.Wait()
+	}(csv_wg)
+	csv_wg.Wait()
 }
 
-func closeHttpBody(Body io.ReadCloser) {
-	err := Body.Close()
+func closeHttpBody(b io.ReadCloser) {
+	err := b.Close()
 	if err != nil {
 		fmt.Println("an error occurred when closing http GET")
 	}
