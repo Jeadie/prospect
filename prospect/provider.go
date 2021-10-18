@@ -93,6 +93,44 @@ func (m MiningComProvider) GetBaseUrl() *url.URL {
 	return v
 }
 
+
+type AFRMiningProvider struct {
+	BaseUrl string
+}
+
+func (m AFRMiningProvider) GetResources(d *goquery.Document, output chan *goquery.Selection)  {
+	d.Find("[data-pb-type=\"st\"]").FilterFunction(func(_ int, s *goquery.Selection) bool {
+		return s.Find("[data-pb-type=\"ab\"]").Length() > 0
+	}).Each(func(_ int, s *goquery.Selection) {output <- s})
+	close(output)
+}
+
+func (m AFRMiningProvider) ToResource(s *goquery.Selection) *ResourceReference {
+	title := s.Find("[data-pb-type=\"hl\"]").Find("a")
+	href, _ := title.Attr("href")
+	link, err := url.Parse(m.BaseUrl + href)
+
+	body := s.Find("[data-pb-type=\"ab\"]")
+
+	if err != nil {
+		return &ResourceReference{}
+	} else {
+		return &ResourceReference{
+			Href:    link,
+			Title:   cleanString(title.Text()),
+			Preview: cleanString(body.Text()),
+		}
+	}
+}
+
+func (m AFRMiningProvider) GetBaseUrl() *url.URL {
+	v, err := url.Parse(m.BaseUrl)
+	if err != nil {
+		return &url.URL{}
+	}
+	return v
+}
+
 func cleanString(s string) string {
 	s = strings.ReplaceAll(s, "\n", "")
 	s = strings.TrimSpace(s)

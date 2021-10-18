@@ -17,6 +17,9 @@ func main() {
 	providers := []prospect.Provider{
 		prospect.ReutersProvider{},
 		prospect.MiningComProvider{},
+		prospect.AFRMiningProvider{
+			BaseUrl: "https://www.afr.com/companies/mining",
+		},
 	}
 
 	// Channels & Wait groups
