@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-
 type ResourceReference struct {
 	Href    *url.URL
 	Title   string
@@ -21,12 +20,11 @@ type Provider interface {
 	//Parse(document goquery.Document) (Resource, error)
 }
 
-
 type ReutersProvider struct {
 	// Currently, nothing is needed.
 }
 
-func (p ReutersProvider) GetResources(d *goquery.Document, output chan *goquery.Selection)  {
+func (p ReutersProvider) GetResources(d *goquery.Document, output chan *goquery.Selection) {
 	d.Find("[class^=\"FeedScroll-feed-container-\"]").Find(".item").Each(func(_ int, s *goquery.Selection) {
 		output <- s
 	})
@@ -57,12 +55,11 @@ func (p ReutersProvider) GetBaseUrl() *url.URL {
 	return v
 }
 
-
 type MiningComProvider struct {
 	// Currently, nothing is needed.
 }
 
-func (m MiningComProvider) GetResources(d *goquery.Document, output chan *goquery.Selection)  {
+func (m MiningComProvider) GetResources(d *goquery.Document, output chan *goquery.Selection) {
 	d.Find("[data-post-id]").Each(func(_ int, s *goquery.Selection) {
 		output <- s
 	})
@@ -93,15 +90,14 @@ func (m MiningComProvider) GetBaseUrl() *url.URL {
 	return v
 }
 
-
 type AFRMiningProvider struct {
 	BaseUrl string
 }
 
-func (m AFRMiningProvider) GetResources(d *goquery.Document, output chan *goquery.Selection)  {
+func (m AFRMiningProvider) GetResources(d *goquery.Document, output chan *goquery.Selection) {
 	d.Find("[data-pb-type=\"st\"]").FilterFunction(func(_ int, s *goquery.Selection) bool {
 		return s.Find("[data-pb-type=\"ab\"]").Length() > 0
-	}).Each(func(_ int, s *goquery.Selection) {output <- s})
+	}).Each(func(_ int, s *goquery.Selection) { output <- s })
 	close(output)
 }
 
